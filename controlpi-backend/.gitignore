@@ -1,0 +1,32 @@
+# Node.js backend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+dist/
+build/
+
+# React frontend
+controlpi-frontend/node_modules/
+controlpi-frontend/build/
+controlpi-frontend/.next/
+controlpi-frontend/.out/
+controlpi-frontend/.vercel/
+controlpi-frontend/.env*
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
