@@ -1,26 +1,14 @@
-const express = require("express");
-const jwt = require("jsonwebtoken");
+import express from "express";
 const router = express.Router();
 
-router.post("/pi-login", async (req, res) => {
-  const { authResult } = req.body || {};
-  if (!authResult || !authResult.user) {
-    return res.status(400).json({ error: "Résultat d’authentification invalide" });
-  }
+// Exemple de route d'authentification
+router.post("/", (req, res) => {
+  const { accessToken } = req.body;
+  console.log("Token reçu :", accessToken);
 
-  // Vérification côté Pi Developer API (exemple simplifié)
-  // const verify = await fetch("https://api.minepi.com/v2/verify", {
-  //   headers: { Authorization: `Bearer ${process.env.PI_API_KEY}` }
-  // });
-
-  const payload = {
-    uid: authResult.user.uid,
-    username: authResult.user.username
-  };
-
-  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
-
-  res.json({ token, user: payload });
+  // Ici tu valides le token avec l'API Pi
+  // Pour l'instant on simule une réponse OK
+  res.json({ status: "ok", user: { username: "TestUser" } });
 });
 
-module.exports = router;
+export default router;

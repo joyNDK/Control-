@@ -1,19 +1,13 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
 
-// Confirmation de paiement
-router.post("/confirm", async (req, res) => {
-  const { paymentId } = req.body || {};
-  if (!paymentId) return res.status(400).json({ error: "PaymentId manquant" });
+// Création d'un paiement
+router.post("/", (req, res) => {
+  const payment = req.body;
+  console.log("Paiement reçu :", payment);
 
-  // Vérification côté Pi Developer API
-  // const payment = await fetch(`https://api.minepi.com/v2/payments/${paymentId}`, {
-  //   headers: { Authorization: `Bearer ${process.env.PI_API_KEY}` }
-  // });
-  // const data = await payment.json();
-
-  // Exemple simplifié : on suppose que le paiement est validé
-  res.json({ ok: true, paymentId, status: "completed" });
+  // Ici tu peux stocker le paiement en base ou vérifier
+  res.json({ status: "pending", payment });
 });
 
-module.exports = router;
+export default router;
