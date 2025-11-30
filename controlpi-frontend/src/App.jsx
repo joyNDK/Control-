@@ -1,65 +1,119 @@
-import React from "react";
+import React, { useState } from "react";
 
 function App() {
-  const handlePayment = () => {
-    if (!window.Pi) {
-      alert("Pi SDK non chargé !");
-      return;
-    }
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
 
-    window.Pi.createPayment(
-      {
-        amount: 0.001, // Montant en Pi
-        memo: "Test transaction ControlPi",
-        metadata: { userId: "nathan" }
-      },
-      {
-        onReadyForServerApproval: async (paymentId) => {
-          console.log("Demande d'approbation serveur:", paymentId);
-          // Envoie au backend Render pour approbation
-          await fetch("https://controlpi-backend.onrender.com/api/payments/approve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId })
-          });
-        },
-        onReadyForServerCompletion: async (paymentId, txid) => {
-          console.log("Transaction prête à être complétée:", paymentId, txid);
-          // Envoie au backend Render pour finalisation
-          await fetch("https://controlpi-backend.onrender.com/api/payments/callback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, txid })
-          });
-        },
-        onCancel: (paymentId) => {
-          console.log("Paiement annulé:", paymentId);
-        },
-        onError: (error, paymentId) => {
-          console.error("Erreur paiement:", error, paymentId);
-        }
+  // 🔹 Authentification Pi
+  const handleLogin = async () => {
+    try {
+      const scopes = ["username", "payments"];
+      const authResult = await window.Pi.authenticate(scopes);
+
+      // Envoi du token au backend
+      const response = await fetch("https://pi-backend.onrender.com/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: authResult.accessToken }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        setError(null);
+      } else {
+        setError("Échec de l'authentification côté backend");
       }
-    );
+    } catch (err) {
+      console.error("Erreur Pi SDK :", err);
+      setError("Échec de l'authentification Pi");
+    }
+  };
+
+  // 🔹 Paiement Pi
+  const handlePayment = async () => {
+    try {
+      // Création du paiement via SDK
+      const payment = await window.Pi.createPayment({
+        amount: 1,
+        memo: "Test ControlPi",
+        metadata: { purpose: "validation" },
+      });
+
+      // Envoi du paiement au backend
+      const response = await fetch(
+        "https://pi-backend.onrender.com/api/payments/create",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payment),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setPaymentStatus("Paiement en attente de confirmation...");
+      } else {
+        setPaymentStatus("Erreur lors de la création du paiement");
+      }
+    } catch (err) {
+      console.error("Erreur paiement :", err);
+      setPaymentStatus("⚠️ Échec du paiement");
+    }
   };
 
   return (
     <div style={{ padding: "2rem", textAlign: "center" }}>
-      <h1>💻 ControlPi Frontend</h1>
-      <p>Bienvenue, tu peux tester un paiement Pi ci‑dessous :</p>
-      <button
-        onClick={handlePayment}
-        style={{
-          padding: "1rem 2rem",
-          fontSize: "1.2rem",
-          backgroundColor: "#f5a623",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-          color: "#fff"
-        }}
-      >
-        💸 Payer avec Pi
-      </button>
+      <h1>✅ ControlPi Frontend fonctionne !</h1>
+      <p>Bienvenue dans ton app React connectée au backend Render.</p>
+
+      {!user ? (
+        <button
+          onClick={handleLogin}
+          style={{
+            marginTop: "1rem",
+            padding: "0.8rem 1.5rem",
+            fontSize: "1rem",
+            backgroundColor: "#f7931a",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+          }}
+        >
+          Se connecter avec Pi
+        </button>
+      ) : (
+        <div style={{ marginTop: "1.5rem" }}>
+          <h2>👋 Bonjour {user.username}</h2>
+          <button
+            onClick={handlePayment}
+            style={{
+              marginTop: "1rem",
+              padding: "0.8rem 1.5rem",
+              fontSize: "1rem",
+              backgroundColor: "#4caf50",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            Tester un paiement Pi
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p style={{ color: "red", marginTop: "1rem" }}>
+          ⚠️ {error}
+        </p>
+      )}
+
+      {paymentStatus && (
+        <p style={{ marginTop: "1rem", color: "blue" }}>{paymentStatus}</p>
+      )}
     </div>
   );
 }
