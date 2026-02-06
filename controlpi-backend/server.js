@@ -1,70 +1,123 @@
-// Import des modules
-const express = require("express");
-const path = require("path");
-const cors = require("cors");
-
+const express = require('express');
+const cors = require('cors');
 const app = express();
-app.use(cors());
+
+// Configuration pour Replit
+const PORT = process.env.PORT || 3000;
+const FRONTEND_URL = 'https://controlpi-frontend.vercel.app';
+
+// Middleware
+app.use(cors({
+  origin: [FRONTEND_URL, 'http://localhost:3000', 'https://*.replit.dev', 'https://*.repl.co'],
+  credentials: true
+}));
 app.use(express.json());
 
-// -------------------- VALIDATION PI --------------------
-// Fichier de validation pour prouver la propriété du domaine
-app.get("/validation-key.txt", (req, res) => {
-  res.sendFile(path.join(__dirname, "validation-key.txt"));
+// Logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
 });
 
-// -------------------- TEST --------------------
-app.get("/", (req, res) => {
-  res.send("✅ ControlPi Backend en ligne !");
+// Routes principales
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'ControlPi Backend',
+    platform: 'Replit',
+    url: req.protocol + '://' + req.get('host'),
+    endpoints: [
+      'GET /health',
+      'POST /api/auth',
+      'POST /api/payments/create',
+      'POST /api/payments/approve',
+      'POST /api/payments/complete',
+      'POST /api/payments/callback'
+    ]
+  });
 });
 
-// -------------------- AUTHENTIFICATION --------------------
-app.post("/api/auth", (req, res) => {
-  const { accessToken } = req.body;
-  console.log("Token reçu :", accessToken);
-
-  // Ici tu devrais appeler l’API Pi pour valider le token
-  // Pour l’instant on simule une réponse OK
-  res.json({ success: true, user: { username: "TestUser" } });
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
 });
 
-// -------------------- PAIEMENTS --------------------
-
-// Création d’un paiement (appelé par window.Pi.createPayment)
-app.post("/api/payments/create", (req, res) => {
-  const { amount, memo, metadata } = req.body;
-  console.log("Paiement créé :", { amount, memo, metadata });
-
-  // Réponse simulée
-  res.json({ success: true, status: "pending", paymentId: "demo-payment-id" });
+// Authentification
+app.post('/api/auth', (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      uid: `user_${Date.now()}`,
+      username: 'controlpi_user',
+      session: `sess_${Date.now()}`
+    },
+    message: 'Authentifié sur Replit'
+  });
 });
 
-// Approve payment (appelé par le SDK Pi)
-app.post("/api/payments/approve", (req, res) => {
-  const { paymentId } = req.body;
-  console.log("Paiement à approuver:", paymentId);
-
-  // Ici tu appelles l’API Pi pour approuver le paiement
-  res.json({ success: true, message: "Paiement approuvé" });
+// Création de paiement
+app.post('/api/payments/create', (req, res) => {
+  const paymentId = `replit_${Date.now()}`;
+  res.json({
+    success: true,
+    payment: {
+      identifier: paymentId,
+      amount: req.body.amount || 3.14,
+      memo: req.body.memo || 'ControlPi Replit Payment',
+      metadata: {
+        platform: 'Replit',
+        app: 'ControlPi',
+        timestamp: new Date().toISOString()
+      }
+    }
+  });
 });
 
-// Callback pour finaliser paiement (appelé par le SDK Pi)
-app.post("/api/payments/callback", (req, res) => {
-  const { paymentId, txid } = req.body;
-  console.log("Paiement complété:", paymentId, txid);
-
-  res.json({ success: true, message: "Paiement validé" });
+// Approbation
+app.post('/api/payments/approve', (req, res) => {
+  res.json({
+    success: true,
+    txid: `tx_replit_${Date.now()}`,
+    message: 'Paiement approuvé sur Replit'
+  });
 });
 
-// Confirmation manuelle (optionnelle)
-app.post("/api/payments/complete", (req, res) => {
-  const { paymentId } = req.body;
-  console.log("Paiement confirmé manuellement:", paymentId);
-  res.json({ success: true, status: "completed" });
+// Complétion
+app.post('/api/payments/complete', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Paiement complété',
+    paymentId: req.body.paymentId,
+    txid: req.body.txid
+  });
 });
 
-// -------------------- SERVER --------------------
-const PORT = process.env.PORT || 3000;
+// Callback
+app.post('/api/payments/callback', (req, res) => {
+  console.log('📞 Callback Pi reçu:', req.body);
+  res.json({
+    success: true,
+    received: true,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Démarrer le serveur
 app.listen(PORT, () => {
-  console.log(`✅ Serveur ControlPi démarré sur le port ${PORT}`);
+  console.log(`
+✅ ControlPi Backend sur Replit
+📍 Port: ${PORT}
+📡 URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co
+🔗 Frontend: ${FRONTEND_URL}
+
+=== TEST CES URLS ===
+1. https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co
+2. https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/health
+3. https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/payments/create
+  `);
 });
